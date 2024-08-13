@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"AuthService/pkg/models"
 	"AuthService/pkg/service"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
@@ -24,33 +24,45 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.Default()
 
 	base := router.Group("/api/v1")
-	base.POST("auth/tokens", h.Auth)
+	base.GET("auth/tokens/:user_id", h.GetTokensHandler)
 	base.POST("auth/refresh", h.RefreshTokens)
 
 	return router
 }
 
-type AuthRequest struct {
-	UserID uuid.UUID `json:"user_id" binding:"required"`
-	Email  string    `json:"email" binding:"required,email"`
-}
-
-func (h *Handler) Auth(c *gin.Context) {
-	var authRequest AuthRequest
-	if err := c.ShouldBind(&authRequest); err != nil {
-		c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
+func (h *Handler) GetTokensHandler(c *gin.Context) {
+	var userID uuid.UUID
+	userIDParam := c.Param("user_id")
+	if userIDParam != "" {
+		parsedUserID, err := uuid.Parse(userIDParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, Error{Message: "Invalid user_id"})
+			return
+		}
+		userID = parsedUserID
+	} else {
+		c.JSON(http.StatusBadRequest, Error{Message: "Empty user_id"})
+		return
 	}
-	fmt.Println(authRequest.UserID, authRequest.Email)
-}
 
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	authModel := models.AuthModel{
+		UserID:   userID,
+		ClientIP: c.ClientIP(),
+	}
+
+	response, err := h.services.UserService.GetTokens(authModel)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Error{Message: "Service error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) RefreshTokens(c *gin.Context) {
-	var refreshTokenRequest RefreshTokenRequest
+	var refreshTokenRequest models.RefreshTokenRequest
 	if err := c.ShouldBind(&refreshTokenRequest); err != nil {
 		c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
+		return
 	}
-	fmt.Println(refreshTokenRequest.RefreshToken)
 }
