@@ -23,28 +23,25 @@ const (
 	AccessTTL  time.Duration = time.Hour * 1
 )
 
-type UserStorage interface {
-	CreateUser(userID uuid.UUID) error
-	GetUserData(userID uuid.UUID) (models.UserData, error)
-	CreateSession(auth models.AuthModel) error
-	GetSession(refreshTokenHash string) (models.Session, error)
-	DeleteSession(refreshTokenHash string) error
-}
-
 var (
 	TokenExpiredError        = errors.New("Token is expired")
 	InvalidRefreshTokenError = errors.New("Invalid Refresh Token")
 )
 
-type UserService struct {
-	storage UserStorage
+type Authorization interface {
+	GetTokens(auth models.AuthModel) (models.Tokens, error)
+	RefreshTokens(refreshToken string, ip string) (models.Tokens, error)
 }
 
-func NewUserService(userStorage UserStorage) UserService {
-	return UserService{userStorage}
+type AuthService struct {
+	storage storage.UserStorage
 }
 
-func (u *UserService) GetTokens(auth models.AuthModel) (models.Tokens, error) {
+func NewAuthService(userStorage storage.UserStorage) *AuthService {
+	return &AuthService{userStorage}
+}
+
+func (a *AuthService) GetTokens(auth models.AuthModel) (models.Tokens, error) {
 	resp, err := CreateTokens(auth.UserID, auth.ClientIP)
 	if err != nil {
 		log.Println("CreateTokens:", err)
@@ -57,10 +54,10 @@ func (u *UserService) GetTokens(auth models.AuthModel) (models.Tokens, error) {
 	auth.RefreshTokenTTL = RefreshTTL
 
 	//Если пользователь еще не существует, то создаем его
-	_, err = u.storage.GetUserData(auth.UserID)
+	_, err = a.storage.GetUserData(auth.UserID)
 	if err != nil {
 		if errors.Is(err, storage.UserDoesNotExist) {
-			err = u.storage.CreateUser(auth.UserID)
+			err = a.storage.CreateUser(auth.UserID)
 			if err != nil {
 				log.Println("CreateUser:", err)
 				return resp, err
@@ -71,7 +68,7 @@ func (u *UserService) GetTokens(auth models.AuthModel) (models.Tokens, error) {
 		}
 	}
 
-	err = u.storage.CreateSession(auth)
+	err = a.storage.CreateSession(auth)
 	if err != nil {
 		log.Println("CreateSession:", err)
 		return resp, err
@@ -139,11 +136,11 @@ func CreateTokens(userID uuid.UUID, ip string) (models.Tokens, error) {
 	return tokens, nil
 }
 
-func (u *UserService) RefreshTokens(refreshToken string, ip string) (models.Tokens, error) {
+func (a *AuthService) RefreshTokens(refreshToken string, ip string) (models.Tokens, error) {
 	var resp models.Tokens
 	oldRefreshTokenHash := hashRefreshToken(refreshToken)
 
-	oldSession, err := u.storage.GetSession(oldRefreshTokenHash)
+	oldSession, err := a.storage.GetSession(oldRefreshTokenHash)
 	if err != nil {
 		log.Println("GetSession:", InvalidRefreshTokenError)
 		return resp, InvalidRefreshTokenError
@@ -154,7 +151,7 @@ func (u *UserService) RefreshTokens(refreshToken string, ip string) (models.Toke
 	}
 
 	if oldSession.ClientIP != ip {
-		userData, err := u.storage.GetUserData(oldSession.UserID)
+		userData, err := a.storage.GetUserData(oldSession.UserID)
 		if err != nil {
 			log.Println("GetUserData:", err)
 			return resp, err
@@ -185,13 +182,13 @@ func (u *UserService) RefreshTokens(refreshToken string, ip string) (models.Toke
 
 	newHashedRefreshToken := hashRefreshToken(resp.RefreshToken)
 
-	err = u.storage.DeleteSession(oldRefreshTokenHash)
+	err = a.storage.DeleteSession(oldRefreshTokenHash)
 	if err != nil {
 		log.Println("DeleteSession:", err)
 		return resp, err
 	}
 
-	err = u.storage.CreateSession(models.AuthModel{UserID: oldSession.UserID, ClientIP: oldSession.ClientIP,
+	err = a.storage.CreateSession(models.AuthModel{UserID: oldSession.UserID, ClientIP: oldSession.ClientIP,
 		RefreshTokenHash: newHashedRefreshToken, RefreshTokenTTL: RefreshTTL})
 	if err != nil {
 		log.Println("CreateSession:", err)

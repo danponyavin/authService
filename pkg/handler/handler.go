@@ -70,7 +70,7 @@ func (h *Handler) GetTokensHandler(c *gin.Context) {
 		ClientIP: c.ClientIP(),
 	}
 
-	response, err := h.services.UserService.GetTokens(authModel)
+	response, err := h.services.Authorization.GetTokens(authModel)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Error{Message: "Service error"})
 		return
@@ -99,7 +99,7 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 
 	ip := c.ClientIP()
 
-	response, err := h.services.UserService.RefreshTokens(refreshTokenRequest.RefreshToken, ip)
+	response, err := h.services.Authorization.RefreshTokens(refreshTokenRequest.RefreshToken, ip)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.InvalidRefreshTokenError), errors.Is(err, service.TokenExpiredError):

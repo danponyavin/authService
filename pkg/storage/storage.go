@@ -14,6 +14,14 @@ var (
 	UserDoesNotExist = errors.New("User does not exist")
 )
 
+type UserStorage interface {
+	CreateUser(userID uuid.UUID) error
+	GetUserData(userID uuid.UUID) (models.UserData, error)
+	CreateSession(auth models.AuthModel) error
+	GetSession(refreshTokenHash string) (models.Session, error)
+	DeleteSession(refreshTokenHash string) error
+}
+
 func (p *PostgresStorage) CreateUser(userID uuid.UUID) error {
 
 	//Заполню моковыми данными email пользователя

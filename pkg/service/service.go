@@ -3,11 +3,11 @@ package service
 import "AuthService/pkg/storage"
 
 type Service struct {
-	UserService
+	Authorization
 }
 
 func NewService(storage *storage.PostgresStorage) *Service {
 	return &Service{
-		UserService: NewUserService(storage),
+		Authorization: NewAuthService(storage),
 	}
 }
