@@ -10,7 +10,9 @@ import (
 
 const defaultEmail = "test@test.com"
 
-var UserDoesNotExist = errors.New("User does not exist")
+var (
+	UserDoesNotExist = errors.New("User does not exist")
+)
 
 func (p *PostgresStorage) CreateUser(userID uuid.UUID) error {
 
@@ -41,6 +43,29 @@ func (p *PostgresStorage) CreateSession(auth models.AuthModel) error {
 	_, err := p.db.Exec("INSERT INTO refresh_sessions (user_id, ip, refresh_token, issued_at, expires_in) "+
 		"VALUES ($1, $2, $3, $4, $5)",
 		auth.UserID.String(), auth.ClientIP, auth.RefreshTokenHash, time.Now(), time.Now().Add(auth.RefreshTokenTTL))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *PostgresStorage) GetSession(refreshTokenHash string) (models.Session, error) {
+
+	var s models.Session
+	err := p.db.QueryRow("SELECT user_id, refresh_token, ip, issued_at, expires_in FROM refresh_sessions "+
+		"WHERE refresh_token = $1", refreshTokenHash).Scan(&s.UserID, &s.RefreshTokenHash, &s.ClientIP,
+		&s.IssuedAt, &s.ExpiresIn)
+	if err != nil {
+		return s, err
+	}
+
+	return s, nil
+}
+
+func (p *PostgresStorage) DeleteSession(refreshTokenHash string) error {
+
+	_, err := p.db.Exec("DELETE FROM refresh_sessions WHERE refresh_token = $1", refreshTokenHash)
 	if err != nil {
 		return err
 	}

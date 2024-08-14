@@ -3,6 +3,7 @@ package handler
 import (
 	"AuthService/pkg/models"
 	"AuthService/pkg/service"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
@@ -65,4 +66,20 @@ func (h *Handler) RefreshTokens(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
 		return
 	}
+
+	ip := c.ClientIP()
+
+	response, err := h.services.UserService.RefreshTokens(refreshTokenRequest.RefreshToken, ip)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.InvalidRefreshTokenError), errors.Is(err, service.TokenExpiredError):
+			c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, Error{Message: err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
 }
