@@ -1,0 +1,79 @@
+definitions:
+  AuthService_pkg_models.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  AuthService_pkg_models.Tokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  pkg_handler.Error:
+    properties:
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+  title: Auth Service API
+paths:
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Обновление Access и Refresh токенов по Refresh токену
+      parameters:
+      - description: Входные параметры
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/AuthService_pkg_models.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AuthService_pkg_models.Tokens'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg_handler.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg_handler.Error'
+      summary: Обновление токенов
+  /auth/tokens/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Получение пары токенов по userID
+      parameters:
+      - description: User ID
+        example: 5fd3b119-408e-451e-8bd3-641b38fa8cde
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AuthService_pkg_models.Tokens'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg_handler.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg_handler.Error'
+      summary: Получение токенов
+swagger: "2.0"

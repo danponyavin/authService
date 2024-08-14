@@ -7,6 +7,8 @@ import (
 	"AuthService/pkg/storage"
 )
 
+// @title Auth Service API
+// main godoc
 func main() {
 	repository := storage.NewPostgreSQLStorage()
 	services := service.NewService(repository)
