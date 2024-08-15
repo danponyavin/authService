@@ -3,6 +3,8 @@ definitions:
     properties:
       refresh_token:
         type: string
+    required:
+    - refresh_token
     type: object
   AuthService_pkg_models.Tokens:
     properties:

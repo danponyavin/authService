@@ -104,6 +104,9 @@ const docTemplate = `{
     "definitions": {
         "AuthService_pkg_models.RefreshTokenRequest": {
             "type": "object",
+            "required": [
+                "refresh_token"
+            ],
             "properties": {
                 "refresh_token": {
                     "type": "string"
