@@ -1,6 +1,16 @@
 package service
 
-import "AuthService/pkg/storage"
+import (
+	"AuthService/pkg/models"
+	"AuthService/pkg/storage"
+)
+
+//go:generate mockgen -source=service.go -destination=mocks/mock.go
+
+type Authorization interface {
+	GetTokens(auth models.AuthModel) (models.Tokens, error)
+	RefreshTokens(inp models.RefreshModel) (models.Tokens, error)
+}
 
 type Service struct {
 	Authorization

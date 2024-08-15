@@ -28,11 +28,6 @@ var (
 	InvalidRefreshTokenError = errors.New("Invalid Refresh Token")
 )
 
-type Authorization interface {
-	GetTokens(auth models.AuthModel) (models.Tokens, error)
-	RefreshTokens(refreshToken string, ip string) (models.Tokens, error)
-}
-
 type AuthService struct {
 	storage storage.UserStorage
 }
@@ -136,9 +131,9 @@ func CreateTokens(userID uuid.UUID, ip string) (models.Tokens, error) {
 	return tokens, nil
 }
 
-func (a *AuthService) RefreshTokens(refreshToken string, ip string) (models.Tokens, error) {
+func (a *AuthService) RefreshTokens(inp models.RefreshModel) (models.Tokens, error) {
 	var resp models.Tokens
-	oldRefreshTokenHash := hashRefreshToken(refreshToken)
+	oldRefreshTokenHash := hashRefreshToken(inp.RefreshToken)
 
 	oldSession, err := a.storage.GetSession(oldRefreshTokenHash)
 	if err != nil {
@@ -150,7 +145,7 @@ func (a *AuthService) RefreshTokens(refreshToken string, ip string) (models.Toke
 		return resp, TokenExpiredError
 	}
 
-	if oldSession.ClientIP != ip {
+	if oldSession.ClientIP != inp.ClientIP {
 		userData, err := a.storage.GetUserData(oldSession.UserID)
 		if err != nil {
 			log.Println("GetUserData:", err)
@@ -162,7 +157,7 @@ func (a *AuthService) RefreshTokens(refreshToken string, ip string) (models.Toke
 		m.SetHeader("To", userData.Email)
 		m.SetHeader("Subject", "Подозрительный вход")
 
-		warningMessage := fmt.Sprintf("На Ваш аккаунт был осуществлен вход с другого ip адреса: %s", ip)
+		warningMessage := fmt.Sprintf("На Ваш аккаунт был осуществлен вход с другого ip адреса: %s", inp.ClientIP)
 		log.Println(warningMessage)
 
 		m.SetBody("text/html", fmt.Sprintf("<p>%s</p>", warningMessage))

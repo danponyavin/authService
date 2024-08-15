@@ -12,6 +12,8 @@ import (
 	"net/http"
 )
 
+var serviceError = "Service error"
+
 type Handler struct {
 	services *service.Service
 }
@@ -33,7 +35,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	base := router.Group("/api/v1")
-	base.GET("auth/tokens/:user_id", h.GetTokensHandler)
+	base.GET("auth/tokens/:user_id", h.GetTokens)
 	base.POST("auth/refresh", h.RefreshTokens)
 
 	return router
@@ -50,7 +52,7 @@ func (h *Handler) InitRoutes() *gin.Engine {
 // @Failure 400 {object} Error
 // @Failure 500 {object} Error
 // @Router /auth/tokens/{user_id} [get]
-func (h *Handler) GetTokensHandler(c *gin.Context) {
+func (h *Handler) GetTokens(c *gin.Context) {
 	var userID uuid.UUID
 	userIDParam := c.Param("user_id")
 	if userIDParam != "" {
@@ -72,7 +74,7 @@ func (h *Handler) GetTokensHandler(c *gin.Context) {
 
 	response, err := h.services.Authorization.GetTokens(authModel)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Error{Message: "Service error"})
+		c.JSON(http.StatusInternalServerError, Error{Message: serviceError})
 		return
 	}
 
@@ -91,22 +93,25 @@ func (h *Handler) GetTokensHandler(c *gin.Context) {
 // @Failure 500 {object} Error
 // @Router /auth/refresh [post]
 func (h *Handler) RefreshTokens(c *gin.Context) {
-	var refreshTokenRequest models.RefreshTokenRequest
-	if err := c.ShouldBind(&refreshTokenRequest); err != nil {
+	var req models.RefreshTokenRequest
+	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
 		return
 	}
 
-	ip := c.ClientIP()
+	refreshModel := models.RefreshModel{
+		RefreshToken: req.RefreshToken,
+		ClientIP:     c.ClientIP(),
+	}
 
-	response, err := h.services.Authorization.RefreshTokens(refreshTokenRequest.RefreshToken, ip)
+	response, err := h.services.Authorization.RefreshTokens(refreshModel)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.InvalidRefreshTokenError), errors.Is(err, service.TokenExpiredError):
 			c.JSON(http.StatusBadRequest, Error{Message: err.Error()})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, Error{Message: err.Error()})
+			c.JSON(http.StatusInternalServerError, Error{Message: serviceError})
 			return
 		}
 	}

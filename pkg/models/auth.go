@@ -23,7 +23,12 @@ type Tokens struct {
 }
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token" binding:"required""`
+}
+
+type RefreshModel struct {
+	RefreshToken string
+	ClientIP     string
 }
 
 type Session struct {
